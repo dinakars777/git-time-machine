@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Utc};
 use std::process::Command;
 
 #[derive(Debug, Clone)]
@@ -89,6 +89,39 @@ impl GitManager {
         }
 
         Ok(())
+    }
+
+    pub fn has_uncommitted_changes(&self) -> Result<bool> {
+        let output = Command::new("git")
+            .args(["status", "--porcelain"])
+            .output()
+            .context("Failed to check git status")?;
+
+        if !output.status.success() {
+            anyhow::bail!("Failed to check for uncommitted changes");
+        }
+
+        let status_output = String::from_utf8(output.stdout)?;
+        Ok(!status_output.trim().is_empty())
+    }
+
+    pub fn get_diff_stat(&self, commit_hash: &str) -> Result<String> {
+        let output = Command::new("git")
+            .args(["diff", "--stat", "HEAD", commit_hash])
+            .output()
+            .context("Failed to get diff stat")?;
+
+        if !output.status.success() {
+            let error = String::from_utf8_lossy(&output.stderr);
+            return Ok(format!("Error getting diff: {}", error));
+        }
+
+        let diff_output = String::from_utf8(output.stdout)?;
+        if diff_output.trim().is_empty() {
+            Ok("No changes between current HEAD and selected commit.".to_string())
+        } else {
+            Ok(diff_output)
+        }
     }
 
     fn format_relative_time(timestamp: &DateTime<Utc>) -> String {
