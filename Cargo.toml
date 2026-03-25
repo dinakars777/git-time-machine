@@ -1,6 +1,6 @@
 [package]
 name = "git-time-machine"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 authors = ["Dinakar Sarbada <dinakars777@gmail.com>"]
 description = "🕰️ A beautiful TUI to undo ANY git mistake in 3 seconds"

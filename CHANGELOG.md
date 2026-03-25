@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.2] - 2026-03-24
+## [0.2.3] - 2026-03-24
 
 ### Added
 - Scrollable diff pane - Use Shift+↑/↓ to scroll through large diffs
@@ -10,6 +10,10 @@
 ### Fixed
 - Commit messages containing `|` character now parse correctly (switched to null byte delimiter)
 - Diff scroll resets to top when navigating to a different commit
+
+## [0.2.2] - 2026-03-24
+
+(Skipped version)
 
 ## [0.2.1] - 2026-03-23
 
