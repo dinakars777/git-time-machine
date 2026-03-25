@@ -4,8 +4,14 @@
 
 Never lose work again. `git-time-machine` makes git reflog visual, interactive, and actually usable.
 
+<div align="center">
+
 [![Crates.io](https://img.shields.io/crates/v/git-time-machine.svg)](https://crates.io/crates/git-time-machine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+### [🌐 View Landing Page](https://dinakars777.github.io/git-time-machine/)
+
+</div>
 
 ## ✨ The Problem
 
