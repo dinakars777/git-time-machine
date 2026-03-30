@@ -77,6 +77,17 @@ impl App {
         self.list_state.selected().unwrap_or(0)
     }
 
+    fn update_diff_if_visible(&mut self) -> Result<()> {
+        if self.show_diff {
+            let idx = self.selected_index();
+            if let Some(entry) = self.entries.get(idx) {
+                self.diff_content = self.git_manager.get_diff_stat(&entry.hash)?;
+                self.diff_scroll_offset = 0;
+            }
+        }
+        Ok(())
+    }
+
     fn next(&mut self) -> Result<()> {
         if self.entries.is_empty() {
             return Ok(());
@@ -92,14 +103,7 @@ impl App {
             None => 0,
         };
         self.list_state.select(Some(i));
-        
-        // Update diff if showing
-        if self.show_diff {
-            if let Some(entry) = self.entries.get(i) {
-                self.diff_content = self.git_manager.get_diff_stat(&entry.hash)?;
-                self.diff_scroll_offset = 0;
-            }
-        }
+        self.update_diff_if_visible()?;
         Ok(())
     }
 
@@ -118,14 +122,7 @@ impl App {
             None => 0,
         };
         self.list_state.select(Some(i));
-        
-        // Update diff if showing
-        if self.show_diff {
-            if let Some(entry) = self.entries.get(i) {
-                self.diff_content = self.git_manager.get_diff_stat(&entry.hash)?;
-                self.diff_scroll_offset = 0;
-            }
-        }
+        self.update_diff_if_visible()?;
         Ok(())
     }
 
@@ -262,24 +259,14 @@ fn run_app<B: ratatui::backend::Backend>(
                     KeyCode::Home => {
                         if !app.entries.is_empty() {
                             app.list_state.select(Some(0));
-                            if app.show_diff {
-                                if let Some(entry) = app.entries.first() {
-                                    app.diff_content = app.git_manager.get_diff_stat(&entry.hash)?;
-                                    app.diff_scroll_offset = 0;
-                                }
-                            }
+                            app.update_diff_if_visible()?;
                         }
                     }
                     KeyCode::End => {
                         if !app.entries.is_empty() {
                             let last = app.entries.len() - 1;
                             app.list_state.select(Some(last));
-                            if app.show_diff {
-                                if let Some(entry) = app.entries.get(last) {
-                                    app.diff_content = app.git_manager.get_diff_stat(&entry.hash)?;
-                                    app.diff_scroll_offset = 0;
-                                }
-                            }
+                            app.update_diff_if_visible()?;
                         }
                     }
                     KeyCode::PageDown => {
@@ -287,12 +274,7 @@ fn run_app<B: ratatui::backend::Backend>(
                             let current = app.list_state.selected().unwrap_or(0);
                             let next = (current + 10).min(app.entries.len() - 1);
                             app.list_state.select(Some(next));
-                            if app.show_diff {
-                                if let Some(entry) = app.entries.get(next) {
-                                    app.diff_content = app.git_manager.get_diff_stat(&entry.hash)?;
-                                    app.diff_scroll_offset = 0;
-                                }
-                            }
+                            app.update_diff_if_visible()?;
                         }
                     }
                     KeyCode::PageUp => {
@@ -300,12 +282,7 @@ fn run_app<B: ratatui::backend::Backend>(
                             let current = app.list_state.selected().unwrap_or(0);
                             let prev = current.saturating_sub(10);
                             app.list_state.select(Some(prev));
-                            if app.show_diff {
-                                if let Some(entry) = app.entries.get(prev) {
-                                    app.diff_content = app.git_manager.get_diff_stat(&entry.hash)?;
-                                    app.diff_scroll_offset = 0;
-                                }
-                            }
+                            app.update_diff_if_visible()?;
                         }
                     }
                     KeyCode::Char(' ') => {
