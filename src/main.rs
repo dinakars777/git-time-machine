@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -219,6 +219,11 @@ fn run_app<B: ratatui::backend::Backend>(
         terminal.draw(|f| ui(f, app))?;
 
         if let Event::Key(key) = event::read()? {
+            // Only handle key press events, ignore key release to prevent double-triggering on Windows
+            if key.kind != KeyEventKind::Press {
+                continue;
+            }
+
             if app.show_confirmation {
                 match key.code {
                     KeyCode::Char('y') | KeyCode::Char('Y') => {
