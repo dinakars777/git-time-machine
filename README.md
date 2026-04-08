@@ -1,6 +1,6 @@
 # 🕰️ git-time-machine
 
-> **Undo ANY git mistake in 3 seconds with a beautiful TUI**
+> **Undo DISASTROUS git mistakes in 3 seconds with a beautiful TUI**
 
 Never lose work again. `git-time-machine` makes git reflog visual, interactive, and actually usable.
 
@@ -17,7 +17,7 @@ Never lose work again. `git-time-machine` makes git reflog visual, interactive, 
 
 You just:
 - 🔥 Force pushed and lost commits
-- 💥 Did `git reset --hard` by accident  
+- 💥 Accidentally moved HEAD and lost track of your commits
 - 🗑️ Deleted a branch you needed
 - 🤦 Rebased wrong and broke everything
 - 😱 Can't remember what you did 5 minutes ago
@@ -122,18 +122,17 @@ git-time-machine
 3. Cross-reference multiple entries
 4. Still guess which hash is correct
 
-### Scenario 3: Deleted Branch (Already Garbage Collected Locally)
+### Scenario 3: Accidental Branch Deletion
 ```bash
-# Deleted a branch 2 weeks ago
-# Need it back but don't remember the commit hash
-# git branch -D feature-branch was weeks ago
+# Deleted a branch recently but forgot the commit hash
+# git branch -D feature-branch
 
 # With git-time-machine:
 git-time-machine --all
-# Scroll back through weeks of history
+# Scroll back through your history
 # Find "checkout: moving from feature-branch"
-# See the commit hash right there
-# Press Enter, then: git checkout -b feature-branch
+# Copy the short hash displayed in the UI
+# Hit 'q' to exit, then run: git branch feature-branch <hash>
 ```
 
 **Why not `git reflog --all`?** You'd need to:
@@ -162,6 +161,11 @@ git-time-machine
 3. Hope you counted right
 4. Manually re-apply commits if you messed up
 
+## ⚠️ What Git-Time-Machine Cannot Fix
+
+- **Uncommitted Changes:** If you haven't committed or stashed your work, the reflog cannot see it. Accidentally running `git clean -fd` or wiping uncommitted files via `git reset --hard` is permanent.
+- **Garbage Collected Commits:** By default, git periodically cleans up unreachable commits. If a commit has been permanently garbage-collected, it is gone forever.
+
 ## 🛠️ How It Works
 
 `git-time-machine` is a wrapper around `git reflog` that:
@@ -180,7 +184,7 @@ git-time-machine
 | Task | With git commands | With git-time-machine |
 |------|------------------|---------------------|
 | Find state from "before I broke it" | `git reflog`, scan 50+ lines, guess hash, `git reset --hard <hash>`, hope it's right | Scroll, press Enter |
-| Recover deleted branch from 2 weeks ago | `git reflog --all \| grep branch-name`, find hash, `git checkout -b`, verify | `--all` flag, scroll, press Enter |
+| Recover a deleted branch's commit hash | `git reflog --all \| grep branch-name`, find hash, `git checkout -b`, verify | `--all` flag, scroll, copy hash |
 | Undo complex operation sequence | Remember exact commands, count commits, pick right reset flag | Visual timeline, click the "before" state |
 | Explore "what if" scenarios | Multiple `git reset` attempts, risk losing more work | Navigate freely, restore is one keypress |
 
