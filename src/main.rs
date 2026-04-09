@@ -21,7 +21,7 @@ use git::{GitEntry, GitManager};
 
 #[derive(Parser)]
 #[command(name = "git-time-machine")]
-#[command(about = "🕰️  Undo ANY git mistake in 3 seconds", long_about = None)]
+#[command(about = "🕰️  Undo DISASTROUS git mistakes in 3 seconds", long_about = None)]
 #[command(after_help = "EXAMPLES:\n  \
     git-time-machine              # Show last 50 reflog entries\n  \
     git-time-machine --all        # Show all reflog entries\n  \
