@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde_json;
 use clap::Parser;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{self, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -32,7 +32,14 @@ CONTROLS:\n  \
     PgUp/PgDn   Jump 10 entries\n  \
     Space       Toggle diff preview\n  \
     Enter       Restore to selected commit\n  \
-    q/Esc       Quit")]
+    /           Search/filter commits by message\n  \
+    Esc         Clear active filter (or quit if no filter)\n  \
+    q           Quit\n\n\
+SEARCH MODE:\n  \
+    type        Filter commits (case-insensitive, multi-word AND)\n  \
+    Enter       Apply filter and return to navigation\n  \
+    Esc         Cancel search and clear filter\n  \
+    Backspace   Delete last character")]
 struct Cli {
     /// Show all reflog entries (max 1000, default: last 50)
     #[arg(short, long)]
@@ -53,6 +60,10 @@ struct App {
     diff_scroll_offset: u16,
     diff_visible_height: u16,
     has_uncommitted_changes: bool,
+    search_mode: bool,
+    search_query: String,
+    filtered_entries: Vec<usize>,
+    search_active: bool,
 }
 
 impl App {
@@ -66,6 +77,8 @@ impl App {
             list_state.select(Some(0));
         }
 
+        let filtered_entries = (0..entries.len()).collect();
+
         Ok(Self {
             git_manager,
             entries,
@@ -76,6 +89,10 @@ impl App {
             diff_scroll_offset: 0,
             diff_visible_height: 10,
             has_uncommitted_changes,
+            search_mode: false,
+            search_query: String::new(),
+            filtered_entries,
+            search_active: false,
         })
     }
 
@@ -83,24 +100,69 @@ impl App {
         self.list_state.selected().unwrap_or(0)
     }
 
+    fn selected_entry_idx(&self) -> Option<usize> {
+        let sel = self.list_state.selected()?;
+        self.filtered_entries.get(sel).copied()
+    }
+
+    fn update_filter(&mut self) {
+        let query_lower = self.search_query.to_lowercase();
+        let tokens: Vec<&str> = query_lower.split_whitespace().collect();
+        if tokens.is_empty() {
+            self.filtered_entries = (0..self.entries.len()).collect();
+        } else {
+            self.filtered_entries = self
+                .entries
+                .iter()
+                .enumerate()
+                .filter(|(_, e)| {
+                    let msg = e.message.to_lowercase();
+                    tokens.iter().all(|t| msg.contains(t))
+                })
+                .map(|(i, _)| i)
+                .collect();
+        }
+        if self.filtered_entries.is_empty() {
+            self.list_state.select(None);
+        } else {
+            let sel = self.list_state.selected().unwrap_or(0);
+            if sel >= self.filtered_entries.len() {
+                self.list_state.select(Some(self.filtered_entries.len() - 1));
+            } else if self.list_state.selected().is_none() {
+                self.list_state.select(Some(0));
+            }
+        }
+    }
+
+    fn clear_filter(&mut self) {
+        self.search_query.clear();
+        self.search_active = false;
+        self.search_mode = false;
+        self.filtered_entries = (0..self.entries.len()).collect();
+        if !self.entries.is_empty() {
+            self.list_state.select(Some(0));
+        }
+    }
+
     fn update_diff_if_visible(&mut self) -> Result<()> {
         if self.show_diff {
-            let idx = self.selected_index();
-            if let Some(entry) = self.entries.get(idx) {
-                self.diff_content = self.git_manager.get_diff_stat(&entry.hash)?;
-                self.diff_scroll_offset = 0;
+            if let Some(idx) = self.selected_entry_idx() {
+                if let Some(entry) = self.entries.get(idx) {
+                    self.diff_content = self.git_manager.get_diff_stat(&entry.hash)?;
+                    self.diff_scroll_offset = 0;
+                }
             }
         }
         Ok(())
     }
 
     fn next(&mut self) -> Result<()> {
-        if self.entries.is_empty() {
+        if self.filtered_entries.is_empty() {
             return Ok(());
         }
         let i = match self.list_state.selected() {
             Some(i) => {
-                if i >= self.entries.len() - 1 {
+                if i >= self.filtered_entries.len() - 1 {
                     i // Clamp at bottom instead of wrap-around
                 } else {
                     i + 1
@@ -114,7 +176,7 @@ impl App {
     }
 
     fn previous(&mut self) -> Result<()> {
-        if self.entries.is_empty() {
+        if self.filtered_entries.is_empty() {
             return Ok(());
         }
         let i = match self.list_state.selected() {
@@ -135,9 +197,10 @@ impl App {
     fn toggle_diff(&mut self) -> Result<()> {
         self.show_diff = !self.show_diff;
         if self.show_diff {
-            let idx = self.selected_index();
-            if let Some(entry) = self.entries.get(idx) {
-                self.diff_content = self.git_manager.get_diff_stat(&entry.hash)?;
+            if let Some(idx) = self.selected_entry_idx() {
+                if let Some(entry) = self.entries.get(idx) {
+                    self.diff_content = self.git_manager.get_diff_stat(&entry.hash)?;
+                }
             }
         }
         self.diff_scroll_offset = 0;
@@ -163,7 +226,9 @@ impl App {
     }
 
     fn restore_selected(&self) -> Result<Option<(String, String)>> {
-        let idx = self.list_state.selected().unwrap_or(0);
+        let Some(idx) = self.selected_entry_idx() else {
+            return Ok(None);
+        };
         if let Some(entry) = self.entries.get(idx) {
             self.git_manager.restore_to_commit(&entry.hash)?;
             Ok(Some((entry.hash[..7].to_string(), entry.message.clone())))
@@ -187,14 +252,14 @@ fn main() -> Result<()> {
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
         let _ = disable_raw_mode();
-        let _ = execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
         original_hook(panic_info);
     }));
     
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
@@ -204,11 +269,7 @@ fn main() -> Result<()> {
 
     // Restore terminal
     disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
 
     match res {
@@ -237,6 +298,37 @@ fn run_app<B: ratatui::backend::Backend>(
                 continue;
             }
 
+            if app.search_mode {
+                match key.code {
+                    KeyCode::Esc => {
+                        app.search_mode = false;
+                        app.search_query.clear();
+                        app.search_active = false;
+                        app.update_filter();
+                        if !app.filtered_entries.is_empty() {
+                            app.list_state.select(Some(0));
+                        }
+                        app.update_diff_if_visible()?;
+                    }
+                    KeyCode::Enter => {
+                        app.search_mode = false;
+                        app.search_active = !app.search_query.is_empty();
+                    }
+                    KeyCode::Backspace => {
+                        app.search_query.pop();
+                        app.update_filter();
+                        app.update_diff_if_visible()?;
+                    }
+                    KeyCode::Char(c) => {
+                        app.search_query.push(c);
+                        app.update_filter();
+                        app.update_diff_if_visible()?;
+                    }
+                    _ => {}
+                }
+                continue;
+            }
+
             if app.show_confirmation {
                 match key.code {
                     KeyCode::Char('y') | KeyCode::Char('Y') => {
@@ -249,7 +341,18 @@ fn run_app<B: ratatui::backend::Backend>(
                 }
             } else {
                 match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => return Ok(None),
+                    KeyCode::Char('q') => return Ok(None),
+                    KeyCode::Esc => {
+                        if app.search_active {
+                            app.clear_filter();
+                            app.update_diff_if_visible()?;
+                        } else {
+                            return Ok(None);
+                        }
+                    }
+                    KeyCode::Char('/') => {
+                        app.search_mode = true;
+                    }
                     KeyCode::Down | KeyCode::Char('j') => {
                         if app.show_diff && key.modifiers.contains(event::KeyModifiers::SHIFT) {
                             app.scroll_diff_down();
@@ -275,28 +378,28 @@ fn run_app<B: ratatui::backend::Backend>(
                         }
                     }
                     KeyCode::Home => {
-                        if !app.entries.is_empty() {
+                        if !app.filtered_entries.is_empty() {
                             app.list_state.select(Some(0));
                             app.update_diff_if_visible()?;
                         }
                     }
                     KeyCode::End => {
-                        if !app.entries.is_empty() {
-                            let last = app.entries.len() - 1;
+                        if !app.filtered_entries.is_empty() {
+                            let last = app.filtered_entries.len() - 1;
                             app.list_state.select(Some(last));
                             app.update_diff_if_visible()?;
                         }
                     }
                     KeyCode::PageDown => {
-                        if !app.entries.is_empty() {
+                        if !app.filtered_entries.is_empty() {
                             let current = app.list_state.selected().unwrap_or(0);
-                            let next = (current + 10).min(app.entries.len() - 1);
+                            let next = (current + 10).min(app.filtered_entries.len() - 1);
                             app.list_state.select(Some(next));
                             app.update_diff_if_visible()?;
                         }
                     }
                     KeyCode::PageUp => {
-                        if !app.entries.is_empty() {
+                        if !app.filtered_entries.is_empty() {
                             let current = app.list_state.selected().unwrap_or(0);
                             let prev = current.saturating_sub(10);
                             app.list_state.select(Some(prev));
@@ -307,7 +410,9 @@ fn run_app<B: ratatui::backend::Backend>(
                         app.toggle_diff()?;
                     }
                     KeyCode::Enter => {
-                        app.show_confirmation_dialog();
+                        if app.selected_entry_idx().is_some() {
+                            app.show_confirmation_dialog();
+                        }
                     }
                     _ => {}
                 }
@@ -379,11 +484,18 @@ fn ui(f: &mut Frame, app: &mut App) {
 
     // Timeline list
     let selected_idx = app.selected_index();
+    let query_lower = app.search_query.to_lowercase();
+    let query_tokens: Vec<String> = query_lower
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect();
+    let highlight_query = (app.search_active || app.search_mode) && !query_tokens.is_empty();
     let items: Vec<ListItem> = app
-        .entries
+        .filtered_entries
         .iter()
         .enumerate()
-        .map(|(i, entry)| {
+        .filter_map(|(i, &entry_idx)| {
+            let entry = app.entries.get(entry_idx)?;
             let is_selected = i == selected_idx;
             let style = if is_selected {
                 Style::default().bg(Color::DarkGray).fg(Color::Yellow).add_modifier(Modifier::BOLD)
@@ -398,14 +510,55 @@ fn ui(f: &mut Frame, app: &mut App) {
                 Style::default().fg(Color::DarkGray)
             };
 
-            ListItem::new(Line::from(vec![
+            let mut spans = vec![
                 Span::styled(prefix, style),
                 Span::styled(&entry.relative_time, time_style),
                 Span::raw("  "),
                 Span::styled(&entry.hash[..7], Style::default().fg(Color::Yellow)),
                 Span::raw("  "),
-                Span::styled(&entry.message, style),
-            ]))
+            ];
+
+            if highlight_query {
+                let msg = &entry.message;
+                let msg_lower = msg.to_lowercase();
+                let highlight_style = Style::default().fg(Color::Red).add_modifier(Modifier::BOLD);
+                // Collect all match ranges from all tokens, then merge overlaps
+                let mut ranges: Vec<(usize, usize)> = Vec::new();
+                for token in &query_tokens {
+                    let mut start = 0;
+                    while let Some(pos) = msg_lower[start..].find(token.as_str()) {
+                        let abs = start + pos;
+                        ranges.push((abs, abs + token.len()));
+                        start = abs + token.len();
+                    }
+                }
+                ranges.sort_by_key(|r| r.0);
+                let mut merged: Vec<(usize, usize)> = Vec::new();
+                for r in ranges {
+                    if let Some(last) = merged.last_mut() {
+                        if r.0 <= last.1 {
+                            last.1 = last.1.max(r.1);
+                            continue;
+                        }
+                    }
+                    merged.push(r);
+                }
+                let mut cursor = 0;
+                for (s, e) in merged {
+                    if s > cursor {
+                        spans.push(Span::styled(msg[cursor..s].to_string(), style));
+                    }
+                    spans.push(Span::styled(msg[s..e].to_string(), highlight_style));
+                    cursor = e;
+                }
+                if cursor < msg.len() {
+                    spans.push(Span::styled(msg[cursor..].to_string(), style));
+                }
+            } else {
+                spans.push(Span::styled(&entry.message, style));
+            }
+
+            Some(ListItem::new(Line::from(spans)))
         })
         .collect();
 
@@ -447,8 +600,10 @@ fn ui(f: &mut Frame, app: &mut App) {
 
     // Footer with preview or confirmation dialog
     if app.show_confirmation {
-        let selected_idx = app.selected_index();
-        let confirm_text = if let Some(entry) = app.entries.get(selected_idx) {
+        let confirm_text = if let Some(entry) = app
+            .selected_entry_idx()
+            .and_then(|i| app.entries.get(i))
+        {
             if app.has_uncommitted_changes {
                 format!(
                     "⚠️  CONFIRM: Reset to {} - {}? This will discard uncommitted changes! [y/N]",
@@ -468,10 +623,36 @@ fn ui(f: &mut Frame, app: &mut App) {
             .style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
             .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Red)));
         f.render_widget(footer, chunks[2]);
+    } else if app.search_mode {
+        let match_count = app.filtered_entries.len();
+        let footer_line = Line::from(vec![
+            Span::styled("🔍 Search: ", Style::default().fg(Color::Cyan)),
+            Span::styled(app.search_query.clone(), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("█", Style::default().fg(Color::Yellow)),
+            Span::raw(" "),
+            Span::styled(format!("({} matches)", match_count), Style::default().fg(Color::Gray)),
+            Span::raw("  |  "),
+            Span::styled("Enter: apply", Style::default().fg(Color::Green)),
+            Span::raw("  |  "),
+            Span::styled("Esc: cancel", Style::default().fg(Color::Red)),
+        ]);
+        let footer = Paragraph::new(footer_line)
+            .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Yellow)));
+        f.render_widget(footer, chunks[2]);
+    } else if app.search_active {
+        let match_count = app.filtered_entries.len();
+        let text = format!(
+            "🔍 Filtered: {} ({} matches) | / to edit | Esc to clear",
+            app.search_query, match_count
+        );
+        let footer = Paragraph::new(text)
+            .style(Style::default().fg(Color::Yellow))
+            .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Yellow)));
+        f.render_widget(footer, chunks[2]);
     } else {
-        let selected_idx = app.selected_index();
-        let footer_text = if let Some(entry) = app.entries.get(selected_idx) {
-            format!("📍 Will restore to: {} - {} | Press Space for diff preview", &entry.hash[..7], entry.message)
+        let entry_idx = app.selected_entry_idx().unwrap_or(0);
+        let footer_text = if let Some(entry) = app.entries.get(entry_idx) {
+            format!("📍 Will restore to: {} - {} | / to search | Space for diff", &entry.hash[..7], entry.message)
         } else {
             "No entries found".to_string()
         };
