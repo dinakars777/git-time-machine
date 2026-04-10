@@ -1,4 +1,5 @@
 use anyhow::Result;
+use serde_json;
 use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
@@ -20,10 +21,11 @@ use git::{GitEntry, GitManager};
 
 #[derive(Parser)]
 #[command(name = "git-time-machine")]
-#[command(about = "🕰️  Undo ANY git mistake in 3 seconds", long_about = None)]
+#[command(about = "🕰️  Undo DISASTROUS git mistakes in 3 seconds", long_about = None)]
 #[command(after_help = "EXAMPLES:\n  \
     git-time-machine              # Show last 50 reflog entries\n  \
-    git-time-machine --all        # Show all reflog entries\n\n\
+    git-time-machine --all        # Show all reflog entries\n  \
+    git-time-machine --export-json # Export as JSON for automation\n\n\
 CONTROLS:\n  \
     ↑/k, ↓/j    Navigate up/down\n  \
     Home/End    Jump to first/last entry\n  \
@@ -42,6 +44,10 @@ struct Cli {
     /// Show all reflog entries (max 1000, default: last 50)
     #[arg(short, long)]
     all: bool,
+
+    /// Export reflog timeline as JSON
+    #[arg(long)]
+    export_json: bool,
 }
 
 struct App {
@@ -235,6 +241,13 @@ impl App {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     
+    if cli.export_json {
+        let git_manager = GitManager::new()?;
+        let entries = git_manager.get_reflog_entries(cli.all)?;
+        println!("{}", serde_json::to_string_pretty(&entries)?);
+        return Ok(());
+    }
+
     // Setup panic hook to restore terminal
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {

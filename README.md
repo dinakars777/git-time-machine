@@ -16,7 +16,6 @@ Never lose work again. `git-time-machine` makes git reflog visual, interactive, 
 ## ✨ The Problem
 
 You just:
-- 🔥 Force pushed and lost commits
 - 💥 Accidentally moved HEAD and lost track of your commits
 - 🗑️ Deleted a branch you needed
 - 🤦 Rebased wrong and broke everything
