@@ -142,6 +142,30 @@ impl GitManager {
         }
     }
 
+    pub fn get_full_diff(&self, commit_hash: &str) -> Result<String> {
+        if !commit_hash.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Ok("Invalid commit hash format".to_string());
+        }
+
+        let output = Command::new("git")
+            .current_dir(&self.repo_path)
+            .args(["show", "--no-color", commit_hash])
+            .output()
+            .context("Failed to get full diff")?;
+
+        if !output.status.success() {
+            let error = String::from_utf8_lossy(&output.stderr);
+            return Ok(format!("Error getting diff: {}", error));
+        }
+
+        let diff_output = String::from_utf8(output.stdout)?;
+        if diff_output.trim().is_empty() {
+            Ok("No diff available.".to_string())
+        } else {
+            Ok(diff_output)
+        }
+    }
+
     fn format_relative_time(timestamp: &DateTime<Utc>) -> String {
         let now = Utc::now();
         let duration = now.signed_duration_since(*timestamp);
