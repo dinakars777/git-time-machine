@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>git-time-machine - Undo ANY git mistake in 3 seconds</title>
+    <meta name="description" content="Visual git reflog TUI. Never lose work again. Navigate your git history like a time traveler with vim keybindings.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-emoji">🕰️</div>
+            <h1>git-time-machine</h1>
+            <p class="tagline">Undo ANY git mistake in 3 seconds</p>
+            <p class="subtitle">Never lose work again. Visual, interactive git reflog that actually makes sense.</p>
+            
+            <div class="cta-buttons">
+                <button class="btn-primary" onclick="copyCommand()">
+                    <span class="btn-text">cargo install git-time-machine</span>
+                    <span class="btn-icon">📋</span>
+                </button>
+                <a href="https://github.com/dinakars777/git-time-machine" class="btn-secondary" target="_blank">
+                    ⭐ Star on GitHub
+                </a>
+            </div>
+            
+            <div class="demo-container">
+                <img src="../demo.gif" alt="git-time-machine demo" class="demo-gif">
+                <p class="demo-caption">Navigate your git history like a time traveler. One key to restore.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem">
+        <div class="container">
+            <h2>You just broke everything.</h2>
+            <div class="problem-grid">
+                <div class="problem-card">
+                    <div class="problem-icon">🔥</div>
+                    <h3>Force pushed</h3>
+                    <p>Lost commits you needed</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">💥</div>
+                    <h3>git reset --hard</h3>
+                    <p>By accident, of course</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">🗑️</div>
+                    <h3>Deleted a branch</h3>
+                    <p>The one you actually needed</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">🤦</div>
+                    <h3>Rebased wrong</h3>
+                    <p>Everything is broken now</p>
+                </div>
+            </div>
+            
+            <div class="current-solution">
+                <h3>Current solution:</h3>
+                <div class="terminal-bad">
+                    <div class="terminal-line">$ git reflog</div>
+                    <div class="terminal-output">
+                        <div>a1b2c3d HEAD@{0}: commit: Fix bug</div>
+                        <div>e4f5g6h HEAD@{1}: reset: moving to HEAD~1</div>
+                        <div>i7j8k9l HEAD@{2}: commit: Add feature</div>
+                        <div>m0n1o2p HEAD@{3}: checkout: moving from main to feature</div>
+                        <div>q3r4s5t HEAD@{4}: commit: Update docs</div>
+                        <div class="dim">... 45 more cryptic entries ...</div>
+                    </div>
+                    <div class="terminal-line">$ # Which hash do I need? 🤷</div>
+                </div>
+                <p class="pain-point">Dig through cryptic hashes, guess which one is right, pray it works.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section class="solution">
+        <div class="container">
+            <h2>Better solution: git-time-machine 🎯</h2>
+            
+            <div class="comparison">
+                <div class="comparison-card bad">
+                    <h3>❌ With git reflog</h3>
+                    <ol>
+                        <li>Read through cryptic hashes</li>
+                        <li>Guess which one is "before you broke it"</li>
+                        <li>Manually <code>git reset --hard &lt;hash&gt;</code></li>
+                        <li>Hope you picked the right one</li>
+                        <li>Repeat if wrong</li>
+                    </ol>
+                    <p class="time">⏱️ 5-10 minutes + stress</p>
+                </div>
+                
+                <div class="comparison-card good">
+                    <h3>✅ With git-time-machine</h3>
+                    <ol>
+                        <li>Run <code>git-time-machine</code></li>
+                        <li>Scroll through visual timeline</li>
+                        <li>Press Enter</li>
+                    </ol>
+                    <p class="time">⏱️ 3 seconds</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2>Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Visual Timeline</h3>
+                    <p>See your entire git history at a glance, not buried in text</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⏰</div>
+                    <h3>Relative Timestamps</h3>
+                    <p>"5m ago", "2h ago", "yesterday" - actually readable</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>One-Key Restore</h3>
+                    <p>Press Enter, done. No copying hashes, no commands</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⌨️</div>
+                    <h3>Vim Keybindings</h3>
+                    <p>j/k navigation for the keyboard warriors</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>Beautiful TUI</h3>
+                    <p>Built with Ratatui - actually pleasant to use</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Lightning Fast</h3>
+                    <p>Written in Rust - instant startup, zero lag</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases -->
+    <section class="use-cases">
+        <div class="container">
+            <h2>Real-World Scenarios</h2>
+            
+            <div class="use-case">
+                <h3>Scenario 1: "I Don't Know What I Did, But It's Broken"</h3>
+                <p>You ran a bunch of git commands, something broke, you don't remember the exact sequence.</p>
+                <div class="scenario-solution">
+                    <div class="step">Run <code>git-time-machine</code></div>
+                    <div class="arrow">→</div>
+                    <div class="step">Visually scan the timeline</div>
+                    <div class="arrow">→</div>
+                    <div class="step">See "2h ago - before I started"</div>
+                    <div class="arrow">→</div>
+                    <div class="step">Press Enter ✨</div>
+                </div>
+            </div>
+            
+            <div class="use-case">
+                <h3>Scenario 2: Recovering Lost Work After Complex Operations</h3>
+                <p>You did: rebase, merge, reset, amend, rebase again. Now you need code from 3 operations ago.</p>
+                <div class="scenario-solution">
+                    <div class="step">Scroll through visual timeline</div>
+                    <div class="arrow">→</div>
+                    <div class="step">Find "15m ago", "1h ago"</div>
+                    <div class="arrow">→</div>
+                    <div class="step">Press Enter to restore</div>
+                </div>
+            </div>
+            
+            <div class="use-case">
+                <h3>Scenario 3: Deleted Branch (Weeks Ago)</h3>
+                <p>Deleted a branch 2 weeks ago, need it back but don't remember the commit hash.</p>
+                <div class="scenario-solution">
+                    <div class="step"><code>git-time-machine --all</code></div>
+                    <div class="arrow">→</div>
+                    <div class="step">Scroll back through weeks</div>
+                    <div class="arrow">→</div>
+                    <div class="step">Find "checkout: moving from feature-branch"</div>
+                    <div class="arrow">→</div>
+                    <div class="step">Press Enter</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation -->
+    <section class="installation">
+        <div class="container">
+            <h2>Installation</h2>
+            <div class="install-options">
+                <div class="install-card">
+                    <h3>Cargo (Recommended)</h3>
+                    <div class="code-block">
+                        <code>cargo install git-time-machine</code>
+                        <button class="copy-btn" onclick="copyToClipboard('cargo install git-time-machine')">📋</button>
+                    </div>
+                </div>
+                <div class="install-card">
+                    <h3>From Source</h3>
+                    <div class="code-block">
+                        <code>git clone https://github.com/dinakars777/git-time-machine && cd git-time-machine && cargo install --path .</code>
+                        <button class="copy-btn" onclick="copyToClipboard('git clone https://github.com/dinakars777/git-time-machine && cd git-time-machine && cargo install --path .')">📋</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="usage-section">
+                <h3>Usage</h3>
+                <div class="code-block large">
+                    <code># Launch in any git repository<br>git-time-machine<br><br># Show all reflog entries (default: last 50)<br>git-time-machine --all</code>
+                </div>
+                
+                <h3>Controls</h3>
+                <table class="controls-table">
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><kbd>↑</kbd> / <kbd>k</kbd></td>
+                            <td>Move up</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>↓</kbd> / <kbd>j</kbd></td>
+                            <td>Move down</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>Enter</kbd></td>
+                            <td>Restore to selected state</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>q</kbd> / <kbd>Esc</kbd></td>
+                            <td>Quit</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <h2>Never lose work again</h2>
+            <p class="cta-subtext">It's just git under the hood - no magic, no risk.</p>
+            <div class="cta-buttons">
+                <button class="btn-primary large" onclick="copyCommand()">
+                    <span class="btn-text">cargo install git-time-machine</span>
+                    <span class="btn-icon">📋</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>Built with ❤️ and Rust by <a href="https://github.com/dinakars777" target="_blank">@dinakars777</a></p>
+            <div class="footer-links">
+                <a href="https://github.com/dinakars777/git-time-machine" target="_blank">GitHub</a>
+                <a href="https://crates.io/crates/git-time-machine" target="_blank">crates.io</a>
+                <a href="https://github.com/dinakars777/git-time-machine/issues" target="_blank">Issues</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
