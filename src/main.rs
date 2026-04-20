@@ -30,6 +30,7 @@ use git::{GitEntry, GitManager};
 CONTROLS:\n  \
     ↑/k, ↓/j    Navigate up/down\n  \
     Home/End    Jump to first/last entry\n  \
+    gg/G        Jump to first/last entry (vim-style)\n  \
     PgUp/PgDn   Jump 10 entries\n  \
     Space       Toggle diff panel\n  \
     d           Switch between diff summary and full diff\n  \
@@ -70,6 +71,7 @@ struct App {
     filtered_entries: Vec<usize>,
     search_active: bool,
     show_absolute_time: bool,
+    last_key_was_g: bool,
 }
 
 impl App {
@@ -102,6 +104,7 @@ impl App {
             filtered_entries,
             search_active: false,
             show_absolute_time: false,
+            last_key_was_g: false,
         })
     }
 
@@ -427,6 +430,23 @@ fn run_app<B: ratatui::backend::Backend>(
                             app.update_diff_if_visible()?;
                         }
                     }
+                    KeyCode::Char('g') => {
+                        if app.last_key_was_g && !app.filtered_entries.is_empty() {
+                            app.list_state.select(Some(0));
+                            app.update_diff_if_visible()?;
+                            app.last_key_was_g = false;
+                        } else {
+                            app.last_key_was_g = true;
+                        }
+                        continue;
+                    }
+                    KeyCode::Char('G') => {
+                        if !app.filtered_entries.is_empty() {
+                            let last = app.filtered_entries.len() - 1;
+                            app.list_state.select(Some(last));
+                            app.update_diff_if_visible()?;
+                        }
+                    }
                     KeyCode::PageDown => {
                         if !app.filtered_entries.is_empty() {
                             let current = app.list_state.selected().unwrap_or(0);
@@ -459,6 +479,7 @@ fn run_app<B: ratatui::backend::Backend>(
                     }
                     _ => {}
                 }
+                app.last_key_was_g = false;
             }
         }
     }
