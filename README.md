@@ -1,8 +1,8 @@
 # 🕰️ git-time-machine
 
-> **Undo DISASTROUS git mistakes in 3 seconds with a beautiful TUI**
+> **Undo git mistakes in 3 seconds with a TUI**
 
-Never lose work again. `git-time-machine` makes git reflog visual, interactive, and actually usable.
+`git-time-machine` makes git reflog visual and interactive.
 
 <div align="center">
 
@@ -23,7 +23,7 @@ You just:
 
 **Current solution:** Dig through `git reflog`, copy cryptic hashes, pray you picked the right one.
 
-**Better solution:** `git-time-machine` 🎯
+**Better:** `git-time-machine` 🎯
 
 ## 🚀 Demo
 
@@ -77,7 +77,7 @@ git-time-machine --all
 - ✅ **Vim Keybindings** - j/k navigation
 - ✅ **Beautiful TUI** - Built with Ratatui
 - ✅ **Lightning Fast** - Written in Rust
-- ✅ **Zero Config** - Just works™
+- ✅ **Zero Config** - Just works
 
 ## 🔥 Use Cases
 
